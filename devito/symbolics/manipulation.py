@@ -6,7 +6,11 @@ from sympy import Number, Indexed, Symbol, LM, LC, Pow, Add, Mul, Min, Max
 from sympy.core.add import _addsort
 from sympy.core.mul import _mulsort
 
+<<<<<<< HEAD
 from devito.symbolics.extended_sympy import rfunc
+=======
+from devito.symbolics import MIN, MAX
+>>>>>>> 894026a1c (compiler: relax by subclassing Incr)
 from devito.symbolics.search import retrieve_indexed, retrieve_functions
 from devito.tools import as_list, as_tuple, flatten, split, transitive_closure
 from devito.types.equation import Eq
