@@ -86,15 +86,19 @@ def relax_incr_dimensions(iet, **kwargs):
         if not iterations:
             continue
 
-        root = iterations[0]
-        if root in mapper:
-            continue
-
         assert all(i.direction is Forward for i in iterations)
         outer, inner = split(iterations, lambda i: not i.dim.parent.is_Incr)
 
         # Get root's `symbolic_max` out of each outer Dimension
         roots_max = {i.dim.root: i.symbolic_max for i in outer}
+
+        # Process inner iterations and adjust their bounds
+        for n, i in enumerate(outer):
+            rmapper = {}
+            rmapper[i.dim.symbolic_max] = i.symbolic_max
+
+            iter_max = i.dim.symbolic_rmax.xreplace(rmapper)
+            mapper[i] = i._rebuild(limits=(i.symbolic_min, iter_max, i.step))
 
         # Process inner iterations and adjust their bounds
         for n, i in enumerate(inner):
@@ -115,9 +119,9 @@ def relax_incr_dimensions(iet, **kwargs):
             rmapper[i.dim.symbolic_max] = i.symbolic_max
 
             iter_max = i.dim.symbolic_rmax.xreplace(rmapper)
-
             mapper[i] = i._rebuild(limits=(i.symbolic_min, iter_max, i.step))
 
+    # import pdb;pdb.set_trace()
     if mapper:
         iet = Transformer(mapper, nested=True).visit(iet)
 
