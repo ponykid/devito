@@ -115,13 +115,15 @@ def relax_incr_dimensions(iet, **kwargs):
             root_max = roots_max[i.dim.root] + i.symbolic_max - i.dim.symbolic_max
 
             rmapper = {}
+            rmapper[i.dim.symbolic_min] = i.symbolic_min
             rmapper[i.dim.root.symbolic_max] = root_max
             rmapper[i.dim.symbolic_max] = i.symbolic_max
 
+            iter_min = i.dim.symbolic_rmin.xreplace(rmapper)
             iter_max = i.dim.symbolic_rmax.xreplace(rmapper)
-            mapper[i] = i._rebuild(limits=(i.symbolic_min, iter_max, i.step))
 
-    # import pdb;pdb.set_trace()
+            mapper[i] = i._rebuild(limits=(iter_min, iter_max, i.step))
+
     if mapper:
         iet = Transformer(mapper, nested=True).visit(iet)
 

@@ -180,13 +180,6 @@ def pytest_runtest_call(item):
         parallel(item)
 
 
-# A list of optimization options/pipelines to be used in testing
-# regarding spatial and/or temporal blocking.
-opts_tiling = ['advanced',
-               ('advanced', {'skewing': True, 'blocktime': False}),
-               ('advanced', {'skewing': True, 'blockinner': True, 'blocktime': False})]
-
-
 # Utilities for retrocompatibility
 
 
@@ -309,6 +302,15 @@ def assert_blocking(operator, exp_nests):
 
     return bns, pbs
 
+
+# A list of optimization options/pipelines to be used in testing
+# regarding spatial and/or temporal blocking.
+opts_tiling = ['advanced',
+               ('advanced', {'skewing': True, 'blocktime': False}),
+               ('advanced', {'skewing': True, 'blockinner': True, 'blocktime': False})]
+
+opts_wavetiling = ['advanced',
+                   ('advanced', {'skewing': True, 'blocklevels': 2})]
 
 # A list of optimization options/pipelines to be used in testing
 # regarding GPU openacc spatial and/or temporal blocking.
