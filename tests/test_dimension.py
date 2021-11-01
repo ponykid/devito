@@ -4,7 +4,7 @@ import numpy as np
 from sympy import And
 import pytest
 
-from conftest import assert_blocking, skipif, opts_tiling, opts_wavetiling
+from conftest import assert_blocking, skipif, opts_tiling
 from devito import (ConditionalDimension, Grid, Function, TimeFunction, SparseFunction,  # noqa
                     Eq, Operator, Constant, Dimension, SubDimension, switchconfig,
                     SubDomain, Lt, Le, Gt, Ge, Ne, Buffer)
@@ -47,7 +47,7 @@ class TestBufferedDimension(object):
 
 class TestSubDimension(object):
 
-    @pytest.mark.parametrize('opt', opts_wavetiling)
+    @pytest.mark.parametrize('opt', opts_tiling)
     def test_interior(self, opt):
         """
         Tests application of an Operator consisting of a single equation
@@ -69,7 +69,6 @@ class TestSubDimension(object):
         assert np.all(u.data[1, :, -1] == 0.)
         assert np.all(u.data[1, :, :, 0] == 0.)
         assert np.all(u.data[1, :, :, -1] == 0.)
-        import pdb;pdb.set_trace()
 
     def test_domain_vs_interior(self):
         """
@@ -99,7 +98,7 @@ class TestSubDimension(object):
         assert np.all(u.data[1, :, :, -1] == 1)
         assert np.all(u.data[1, 1:3, 1:3, 1:3] == 3)
 
-    @pytest.mark.parametrize('opt', opts_wavetiling)
+    @pytest.mark.parametrize('opt', opts_tiling)
     def test_subdim_middle(self, opt):
         """
         Tests that instantiating SubDimensions using the classmethod
@@ -141,7 +140,7 @@ class TestSubDimension(object):
         xright = SubDimension.right(name='xright', parent=x, thickness=thickness)
         assert xright.symbolic_size == xright.thickness.right[0]
 
-    @pytest.mark.parametrize('opt', opts_wavetiling)
+    @pytest.mark.parametrize('opt', opts_tiling)
     def test_bcs(self, opt):
         """
         Tests application of an Operator consisting of multiple equations
@@ -291,7 +290,7 @@ class TestSubDimension(object):
         vectorized = [i.dim.name for i in iterations if i.is_Vectorized]
         assert set(vectorized) == set(expected)
 
-    @pytest.mark.parametrize('opt', opts_wavetiling)
+    @pytest.mark.parametrize('opt', opts_tiling)
     def test_subdimmiddle_parallel(self, opt):
         """
         Tests application of an Operator consisting of a subdimension
@@ -489,7 +488,7 @@ class TestSubDimension(object):
         # "ValueError: No value found for parameter xi_size"
         op()
 
-    @pytest.mark.parametrize('opt', opts_wavetiling)
+    @pytest.mark.parametrize('opt', opts_tiling)
     def test_expandingbox_like(self, opt):
         """
         Make sure SubDimensions aren't an obstacle to expanding boxes.
@@ -588,7 +587,7 @@ class TestConditionalDimension(object):
         assert np.all([np.allclose(usave.data[i], i*factor)
                       for i in range((nt+factor-1)//factor)])
 
-    @pytest.mark.parametrize('opt', opts_wavetiling)
+    @pytest.mark.parametrize('opt', opts_tiling)
     def test_spacial_subsampling(self, opt):
         """
         Test conditional dimension for the spatial ones.

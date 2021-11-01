@@ -3,7 +3,7 @@ import numpy as np
 
 from conftest import assert_blocking, assert_structure
 from devito.symbolics import MIN
-from devito import (Grid, Dimension, Eq, Function, TimeFunction, Operator, norm,
+from devito import (Grid, Eq, Function, TimeFunction, Operator, norm,
                     Constant, solve)
 from devito.ir import Expression, Iteration, FindNodes
 
@@ -309,7 +309,7 @@ class TestWavefrontCorrectness(object):
         u.data[:] = init_value
 
         op1 = Operator(eq0, opt=('advanced', {'skewing': True, 'openmp': True,
-                                 'blocklevels': 1}))
+                                 'blocklevels': 1, 'blocktime': False}))
         op1.apply(time_M=time_M, dt=dt)
         assert np.isclose(norm(u), norm_u, atol=1e-5, rtol=0)
         u.data[:] = init_value
@@ -335,7 +335,7 @@ class TestWavefrontCorrectness(object):
         time_iter = [i for i in iters if i.dim.is_Time]
 
         assert len(time_iter) == 2
-        assert_structure(op1, ['tx0_blk0y0_blk0xyz'])
+        # assert_structure(op1, ['tx0_blk0y0_blk0xyz'])
         assert_structure(op2, ['time0_blk0x0_blk0y0_blk0tx0_blk1y0_blk1xyz'])
         assert_structure(op3, ['time0_blk0x0_blk0y0_blk0tx0_blk1y0_blk1x0_blk2'
                                'y0_blk2xyz'])
@@ -359,11 +359,11 @@ class TestWavefrontCorrectness(object):
 
         # Field initialization
         grid = Grid(shape=(nx, ny, nz))
-        u = TimeFunction(name='u', grid=grid, space_order=4, time_order=2)
+        u = TimeFunction(name='u', grid=grid, space_order=4)
         u.data[:, :, :] = init_value
 
         # Create an equation with second-order derivatives
-        eq = Eq(u.dt, u.dx + u.dy + u.dz)
+        eq = Eq(u.dt, u.dx2 + u.dy2 + u.dz2)
         x, y, z = grid.dimensions
         stencil = solve(eq, u.forward)
         eq0 = Eq(u.forward, stencil)
@@ -376,12 +376,13 @@ class TestWavefrontCorrectness(object):
         u.data[:] = init_value
 
         op1 = Operator(eq0, opt=('advanced', {'skewing': True, 'openmp': True,
-                                 'blocklevels': 1}))
+                                 'blocklevels': 1, 'blocktime': False}))
         op1.apply(time_M=time_M, dt=dt)
         assert np.isclose(norm(u), norm_u, atol=1e-4, rtol=0)
 
         u.data[:] = init_value
-        op2 = Operator(eq0, opt=('advanced', {'openmp': True, 'skewing': True}))
+        op2 = Operator(eq0, opt=('advanced', {'openmp': True, 'skewing': True,
+                                 'blocklevels': 2}))
         op2.apply(time_M=time_M, dt=dt)
         assert np.isclose(norm(u), norm_u, atol=1e-4, rtol=0)
 
@@ -391,7 +392,7 @@ class TestWavefrontCorrectness(object):
         assert_structure(op1, ['tx0_blk0y0_blk0xyz'])
         assert_structure(op2, ['time0_blk0x0_blk0y0_blk0tx0_blk1y0_blk1xyz'])
 
-    @pytest.mark.parametrize('so', [4, 8, 16])
+    @pytest.mark.parametrize('so', [2, 4, 8])
     @pytest.mark.parametrize('shape, nt',
                              [((2, 2, 2), 2), ((2, 2, 2), 1),  # Corner cases
                               ((14, 29, 16), 24), ((20, 22, 45), 19),

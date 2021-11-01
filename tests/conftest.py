@@ -307,10 +307,10 @@ def assert_blocking(operator, exp_nests):
 # regarding spatial and/or temporal blocking.
 opts_tiling = ['advanced',
                ('advanced', {'skewing': True, 'blocktime': False}),
-               ('advanced', {'skewing': True, 'blockinner': True, 'blocktime': False})]
+               ('advanced', {'skewing': True, 'blockinner': True, 'blocktime': False}),
+               ('advanced', {'skewing': True}),
+               ('advanced', {'skewing': True, 'blocklevels': 2})]
 
-opts_wavetiling = ['advanced',
-                   ('advanced', {'skewing': True, 'blocklevels': 2})]
 
 # A list of optimization options/pipelines to be used in testing
 # regarding GPU openacc spatial and/or temporal blocking.

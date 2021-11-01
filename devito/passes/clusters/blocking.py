@@ -1,13 +1,14 @@
 from collections import Counter
+from sympy import Mod
 
-from devito.ir.clusters import Queue
-from devito.ir.support import (SEQUENTIAL, SKEWABLE, TILABLE, Interval, IntervalGroup,
-                               IterationSpace)
-from devito.symbolics import uxreplace
-from devito.types import RIncrDimension
-from devito.symbolics import xreplace_indices, evalmax, evalmin, retrieve_indexed
-from devito.tools import as_list, as_tuple
 from devito.passes.clusters.utils import level
+from devito.ir.clusters import Queue
+from devito.ir.support import (PARALLEL, SEQUENTIAL, SKEWABLE, TILABLE, Interval,
+                               IntervalGroup, IterationSpace)
+from devito.symbolics import (uxreplace, xreplace_indices, evalmax, evalmin,
+                              retrieve_indexed, INT)
+from devito.tools import as_list, as_tuple
+from devito.types import RIncrDimension
 
 __all__ = ['blocking', 'skewing']
 
@@ -131,11 +132,13 @@ def preprocess(clusters, options):
     return processed
 
 
-def create_block_dims(name, d, levels):
+def create_block_dims(name, d, levels, **kwargs):
     """
     Create the block Dimensions (in total `self.levels` Dimensions)
     """
-    bd = RIncrDimension(name % 0, d, d.symbolic_min, d.symbolic_max)
+    sf = kwargs.pop('sf', 1)
+    bd = RIncrDimension(name % 0, d, d.symbolic_min, d.symbolic_max,
+                        rmax=sf*d.symbolic_max)
     size = bd.step
     block_dims = [bd]
 
@@ -143,7 +146,9 @@ def create_block_dims(name, d, levels):
         bd = RIncrDimension(name % i, bd, bd, bd + bd.step - 1, size=size)
         block_dims.append(bd)
 
-    bd = RIncrDimension(d.name, bd, bd, bd + bd.step - 1, 1, size=size)
+    bd = RIncrDimension(d.name, bd, bd, bd + bd.step - 1, 1, size=size,
+                        rmax=evalmin(bd + bd.step - 1, sf*d.root.symbolic_max),
+                        rstep=sf)
     block_dims.append(bd)
 
     return block_dims
@@ -296,13 +301,16 @@ class Skewing(Queue):
             intervals = []
             for i in c.ispace:
                 if i.dim is d:
-                    # Skew at skewlevel + 1 if time is blocked
+                    # If time is blocked skew at skewlevel + 1
                     cond1 = len(skew_dims) == 2 and level(d) == skewlevel + 1
-                    # Skew at level <=1 if time is not blocked
+                    # If time is blocked skew at level == 0 (e.g. subdims)
+                    cond3 = len(skew_dims) == 2 and level(d) == 0
+                    # If time is not blocked skew at level <=1
                     cond2 = len(skew_dims) == 1 and level(d) <= skewlevel
+
                     if cond1:
                         intervals.append(Interval(d, i.lower, i.upper))
-                    elif cond2:
+                    elif cond2 or cond3:
                         intervals.append(Interval(d, skew_dim, skew_dim))
                     else:
                         intervals.append(i)
@@ -334,26 +342,46 @@ class TBlocking(Queue):
 
         d = prefix[-1].dim
 
-        if not d.is_Time:
-            return clusters
-
-        name = self.template % (d.name, self.nblocked[d], '%d')
-        block_dims = create_block_dims(name, d, 1)
-
         processed = []
+
         for c in clusters:
+            sf = get_skewing_factor(c)
             if d.is_Time:
+                name = self.template % (d.name, self.nblocked[d], '%d')
+                block_dims = create_block_dims(name, d, 1, sf=sf)
+
                 ispace = decompose(c.ispace, d, block_dims)
 
                 # Use the innermost IncrDimension in place of `d`
                 exprs = [uxreplace(e, {d: block_dims[-1]}) for e in c.exprs]
 
+                # The new sub_iterators (skewing factor)
+                sub_iterators = dict(ispace.sub_iterators)
+                sub_iters = []
+                for j in sub_iterators[block_dims[-1]]:
+                    if sf > 1 and j.is_Modulo:
+                        nom = INT(block_dims[-1]/sf)
+                        denom = (block_dims[-1].root.symbolic_max -
+                                 block_dims[-1].root.symbolic_min + 1)
+                        sub_iters.append(j.func(offset=Mod(nom, denom) + j.offset - d))
+                    else:
+                        sub_iters.append(j)
+                sub_iterators.update({block_dims[-1]: tuple(sub_iters)})
+
+                ispace = IterationSpace(ispace, sub_iterators,
+                                        ispace.directions)
                 # The new Cluster properties
                 properties = dict(c.properties)
                 properties.pop(d)
                 properties.update({bd: c.properties[d] for bd in block_dims})
+
                 processed.append(c.rebuild(exprs=exprs, ispace=ispace,
                                            properties=properties))
+
+            elif level(d) == 1:  # Interchanged non-Time loops are not PARALLEL anymore
+                properties = dict(c.properties)
+                properties.update({d: c.properties[d] - {PARALLEL}})
+                processed.append(c.rebuild(properties=properties))
             else:
                 processed.append(c)
         return processed
@@ -390,13 +418,15 @@ class RelaxSkewed(Queue):
                 processed.append(c)
                 continue
 
+            sf = get_skewing_factor(c)
             skew_dim = skew_dims[-1]
             intervals = []
             mapper = {}
             for i in c.ispace:
                 if i.dim in family_dims:
                     if level(i.dim) == 1:
-                        offset = skew_dim.root.symbolic_max - skew_dim.root.symbolic_min
+                        offset = sf*(skew_dim.root.symbolic_max -
+                                     skew_dim.root.symbolic_min)
                         rmax = i.dim.symbolic_max + offset
                         sd = i.dim.func(rmax=rmax)
                         intervals.append(Interval(sd, i.lower, i.upper))

@@ -1004,6 +1004,16 @@ class ModuloDimension(DerivedDimension):
             pass
         return super().__sub__(other)
 
+    @property
+    def func(self):
+        return lambda **kwargs:\
+            self.__class__(name=kwargs.get('name', self.name),
+                           parent=kwargs.get('parent', self.parent),
+                           offset=kwargs.get('offset', self.offset),
+                           modulo=kwargs.get('modulo', self.modulo),
+                           incr=kwargs.get('incr', self.incr),
+                           origin=kwargs.get('origin', self.origin))
+
     # Pickling support
     _pickle_kwargs = ['offset', 'modulo', 'incr', 'origin']
 
@@ -1110,17 +1120,7 @@ class IncrDimension(DerivedDimension):
             return sympy.Number(self.step)
         except (TypeError, ValueError):
             return self.step
-    '''
-    @property
-    def func(self):
-        return lambda **kwargs:\
-            self.__class__(name=kwargs.get('name', self.name),
-                           parent=kwargs.get('parent', self.parent),
-                           _min=kwargs.get('_min', self._min),
-                           _max=kwargs.get('_max', self._max),
-                           step=kwargs.get('step', self.step),
-                           size=kwargs.get('size', self.size))
-    '''
+
     @cached_property
     def _arg_names(self):
         try:
@@ -1193,13 +1193,39 @@ class IncrDimension(DerivedDimension):
 class RIncrDimension(IncrDimension):
 
     """
+    Parameters
+    ----------
+    name : str
+        Name of the dimension.
+    parent : Dimension
+        The Dimension from which the IncrDimension is derived.
+    _min : expr-like
+        The minimum point of the Dimension.
+    _max : expr-like
+        The maximum point of the Dimension.
+    step : expr-like, optional
+        The distance between two consecutive points. Defaults to the
+        symbolic size.
+    size : expr-like, optional
+        The symbolic size of the Dimension. Defaults to `_max-_min+1`.
+    rmin : expr-like
+        The relaxed minimum point of the Dimension.
+    rmax : expr-like
+        The relaxed maximum point of the Dimension.
+    step : expr-like, optional
+        The relaxed step of the dimension.
+
+    Notes
+    -----
+    This type should not be instantiated directly in user code.
     """
 
     def __init_finalize__(self, name, parent, _min, _max, step=None, size=None,
-                          rmin=None, rmax=None):
+                          rmin=None, rmax=None, rstep=None):
         super().__init_finalize__(name, parent, _min, _max, step, size)
         self.rmin = rmin
         self.rmax = rmax
+        self.rstep = rstep
 
     @cached_property
     def symbolic_rmin(self):
@@ -1216,6 +1242,14 @@ class RIncrDimension(IncrDimension):
             return self.rmax
         else:
             return evalmin(self._max, self.root.symbolic_max)
+
+    @cached_property
+    def symbolic_rstep(self):
+        # If not provided return self.step
+        if self.rstep is not None:
+            return self.rstep
+        else:
+            return self.step
 
     @property
     def func(self):
