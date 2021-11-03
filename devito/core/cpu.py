@@ -279,6 +279,10 @@ class Cpu64FsgOperator(Cpu64AdvOperator):
         # Blocking to improve data locality
         clusters = blocking(clusters, options)
 
+        # Temporal blocking to improve data locality
+        if options['skewing']:
+            clusters = skewing(clusters, options)
+
         return clusters
 
 

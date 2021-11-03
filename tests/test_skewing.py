@@ -1,11 +1,11 @@
 import pytest
 import numpy as np
 
-from conftest import assert_blocking, assert_structure
+from conftest import assert_blocking, assert_structure, _R
 from devito.symbolics import MIN
 from devito import (Grid, Eq, Function, TimeFunction, Operator, norm,
                     Constant, solve)
-from devito.ir import Expression, Iteration, FindNodes
+from devito.ir import Expression, Iteration, FindNodes, FindSymbols
 
 
 class TestCodeGenSkewing(object):
@@ -383,3 +383,34 @@ class TestWavefrontCorrectness(object):
         op1 = Operator(eqns, opt=('advanced', {'openmp': True, 'skewing': True}))
         op1.apply(time_M=nt)
         assert np.isclose(norm(u), norm0, atol=1e-5, rtol=0)
+
+
+class TestEdgeCases(object):
+
+    def test_full_shape_big_temporaries(self):
+        """
+        Test that if running with ``opt=advanced-fsg``, then the compiler uses
+        temporaries spanning the whole grid rather than blocks.
+        """
+        grid = Grid(shape=(3, 3, 3))
+        x, y, z = grid.dimensions
+        t = grid.stepping_dim
+
+        u = TimeFunction(name='u', grid=grid, space_order=3)
+        u1 = TimeFunction(name='u1', grid=grid, space_order=3)
+
+        u.data_with_halo[:] = 0.5
+        u1.data_with_halo[:] = 0.5
+
+        # Leads to 3D aliases
+        eqn = Eq(u.forward, _R(_R(u[t, x, y, z] + u[t, x+1, y+1, z+1])*3. +
+                               _R(u[t, x+2, y+2, z+2] + u[t, x+3, y+3, z+3])*3. + 1.))
+
+        op0 = Operator(eqn, opt=('noop', {'openmp': True}))
+        op1 = Operator(eqn, opt=('advanced-fsg', {'openmp': True, 'skewing': True,
+                                 'cire-mingain': 0}))
+
+        # Check numerical output
+        op0(time_M=1)
+        op1(time_M=1, u=u1)
+        assert np.all(u.data == u1.data)

@@ -368,8 +368,8 @@ class TBlocking(Queue):
                         sub_iters.append(j)
                 sub_iterators.update({block_dims[-1]: tuple(sub_iters)})
 
-                ispace = IterationSpace(ispace, sub_iterators,
-                                        ispace.directions)
+                ispace = IterationSpace(ispace, sub_iterators, ispace.directions)
+
                 # The new Cluster properties
                 properties = dict(c.properties)
                 properties.pop(d)
@@ -391,7 +391,6 @@ class RelaxSkewed(Queue):
 
     def __init__(self, options):
         self.nblocked = Counter()
-        self.levels = options['blocklevels']
         super(RelaxSkewed, self).__init__()
 
     def callback(self, clusters, prefix):
@@ -407,6 +406,7 @@ class RelaxSkewed(Queue):
         processed = []
         for c in clusters:
             skew_dims = [i.dim for i in c.ispace if SEQUENTIAL in c.properties[i.dim]]
+
             if len(skew_dims) == 1:
                 processed.append(c)
                 continue
@@ -453,7 +453,7 @@ class RelaxSkewed(Queue):
                 else:
                     intervals.append(i)
 
-            # Replace the new `Dimension`s in relations
+            # Update `relations` with the newly created `Dimension`s
             relations = []
             for r in c.ispace.relations:
                 if any(f for f in family_dims) in r and mapper:
@@ -496,12 +496,16 @@ def get_skewing_factor(cluster):
     '''
     Returns the skewing factor needed to skew a cluster of expressions. Skewing factor is
     equal to half the maximum of the functions' space orders and helps to preserve valid
-    data dependencies while skewing
+    data dependencies while skewing.
+
     Parameters
     ----------
-    c: Cluster
+    cluster: Cluster
         Input Cluster, subject of the computation
     '''
     functions = {i.function for i in retrieve_indexed(cluster.exprs)}
-    sf = int(max([i.space_order for i in functions])/2)
+    try:
+        sf = int(max([i.space_order for i in functions])/2)
+    except AttributeError:
+        sf = 1
     return (sf if sf else 1)
