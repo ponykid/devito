@@ -34,7 +34,7 @@ domain_size = np.array(extent)
 
 # Setup sources
 src.coordinates.data[0, :] = domain_size*.175
-src.coordinates.data[0, -1] = 41
+src.coordinates.data[0, -1] = 11
 src.coordinates.data[1, :] = domain_size*.545
 src.coordinates.data[1, -1] = 41
 
