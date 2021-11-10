@@ -26,6 +26,7 @@ def plot3d(data, model):
     ax.set_zlim(model.spacing[2], data.shape[2]-model.spacing[2])
     plt.savefig("sources_demo.pdf")
 
+
 parser = argparse.ArgumentParser(description='Process arguments.')
 
 parser.add_argument("-d", "--shape", default=(11, 11, 11), type=int, nargs="+",
@@ -160,7 +161,6 @@ save_src_term = src.inject(field=save_src[src.dimensions[0], source_id], expr=sr
 
 op1 = Operator([save_src_term])
 op1.apply(time=time_range.num-1)
-
 
 usol = TimeFunction(name="usol", grid=model.grid, space_order=so, time_order=2)
 
