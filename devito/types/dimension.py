@@ -324,6 +324,13 @@ class BasicDimension(Dimension, Symbol):
     def __init_finalize__(self, name, spacing=None):
         self._spacing = spacing or Scalar(name='h_%s' % name, is_const=True)
 
+    @property
+    def _depth(self):
+        """
+        The depth of `self` in the hierarchy of IncrDimensions.
+        """
+        return len([i for i in self._defines if i.is_Incr])
+
 
 class DefaultDimension(Dimension, DataSymbol):
 
@@ -573,6 +580,13 @@ class SubDimension(DerivedDimension):
     @property
     def _maybe_distributed(self):
         return not self.local
+
+    @property
+    def _depth(self):
+        """
+        The depth of `self` in the hierarchy of IncrDimensions.
+        """
+        return len([i for i in self._defines if i.is_Incr])
 
     @cached_property
     def _thickness_map(self):

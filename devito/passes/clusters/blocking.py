@@ -1,7 +1,6 @@
 from collections import Counter
 from sympy import Mod
 
-from devito.passes.clusters.utils import level
 from devito.ir.clusters import Queue
 from devito.ir.support import (PARALLEL, SEQUENTIAL, SKEWABLE, TILABLE, Interval,
                                IntervalGroup, IterationSpace)
@@ -302,11 +301,11 @@ class Skewing(Queue):
             for i in c.ispace:
                 if i.dim is d:
                     # If time is blocked skew at skewlevel + 1
-                    cond1 = len(skew_dims) == 2 and level(d) == skewlevel + 1
+                    cond1 = len(skew_dims) == 2 and d._depth == skewlevel + 1
                     # If time is blocked skew at level == 0 (e.g. subdims)
-                    cond3 = len(skew_dims) == 2 and level(d) == 0
+                    cond3 = len(skew_dims) == 2 and d._depth == 0
                     # If time is not blocked skew at level <=1
-                    cond2 = len(skew_dims) == 1 and level(d) <= skewlevel
+                    cond2 = len(skew_dims) == 1 and d._depth <= skewlevel
 
                     if cond1:
                         intervals.append(Interval(d, i.lower, i.upper))
@@ -378,7 +377,7 @@ class TBlocking(Queue):
                 processed.append(c.rebuild(exprs=exprs, ispace=ispace,
                                            properties=properties))
 
-            elif level(d) == 1:  # Interchanged non-Time loops are not PARALLEL anymore
+            elif d._depth == 1:  # Interchanged non-Time loops are not PARALLEL anymore
                 properties = dict(c.properties)
                 properties.update({d: c.properties[d] - {PARALLEL}})
                 processed.append(c.rebuild(properties=properties))
@@ -424,14 +423,14 @@ class RelaxSkewed(Queue):
             mapper = {}
             for i in c.ispace:
                 if i.dim in family_dims:
-                    if level(i.dim) == 1:
+                    if i.dim._depth == 1:
                         offset = sf*(skew_dim.root.symbolic_max -
                                      skew_dim.root.symbolic_min)
                         rmax = i.dim.symbolic_max + offset
                         sd = i.dim.func(rmax=rmax)
                         intervals.append(Interval(sd, i.lower, i.upper))
                         mapper.update({i.dim: sd})
-                    elif level(i.dim) == 2:
+                    elif i.dim._depth == 2:
                         rmin = evalmax(i.dim.symbolic_min,
                                        i.dim.root.symbolic_min + skew_dim)
                         rmax = i.dim.symbolic_rmax.xreplace({i.dim.root.symbolic_max:
@@ -440,7 +439,7 @@ class RelaxSkewed(Queue):
                         sd2 = i.dim.func(parent=sd, rmin=rmin, rmax=rmax)
                         intervals.append(Interval(sd2, i.lower, i.upper))
                         mapper.update({i.dim: sd2})
-                    elif level(i.dim) > 2:
+                    elif i.dim._depth > 2:
                         rmax = i.dim.symbolic_rmax.xreplace({i.dim.symbolic_rmax:
                                                             evalmin(sd2.symbolic_rmax,
                                                                     i.dim.symbolic_max)})
