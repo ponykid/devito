@@ -92,8 +92,7 @@ src_f = src.inject(field=f.forward, expr=src * dt**2 / model.m)
 # op_f = Operator([src_f], opt=('advanced', {'openmp': True}))
 op_f = Operator([src_f])
 
-import pdb;pdb.set_trace()
-op_f.apply(time_M=time_range.num-1)
+op_f.apply(time=time_range.num-1)
 normf = norm(f)
 print("==========")
 print(normf)
@@ -160,7 +159,7 @@ save_src = TimeFunction(name='save_src', shape=(src.shape[0],
 save_src_term = src.inject(field=save_src[src.dimensions[0], source_id], expr=src * dt**2 / model.m)
 
 op1 = Operator([save_src_term])
-op1.apply(time=time_range.num-1)
+op1.apply(time=time_range.num-1, dt=dt)
 
 usol = TimeFunction(name="usol", grid=model.grid, space_order=so, time_order=2)
 

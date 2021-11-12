@@ -36,7 +36,7 @@ domain_size = np.array(extent)
 src.coordinates.data[0, :] = domain_size*.175
 src.coordinates.data[0, -1] = 11
 src.coordinates.data[1, :] = domain_size*.545
-src.coordinates.data[1, -1] = 41
+src.coordinates.data[1, -1] = 11
 
 
 u = TimeFunction(name="u", grid=grid, space_order=2)
@@ -87,6 +87,9 @@ op1.apply(time=time_range.num-1, dt=dt)
 u.data[:] = 0
 
 maxz = len(np.unique(nzinds[1]))
+# zinds = np.column_stack(nzinds)
+
+import pdb;pdb.set_trace()
 sparse_shape = as_list((grid.shape[0], maxz))  # Change only 2nd dim
 
 sp_yi = Dimension(name='sp_yi')
@@ -102,15 +105,16 @@ assert(len(sp_sm.dimensions) == 2)
 yind = Scalar(name='yind', dtype=np.int32)
 
 eq0 = Eq(sp_yi.symbolic_max, nnz_mask[x] - 1, implicit_dims=(time, x))
+eq1 = Eq(yind, sp_sm[x, sp_yi], implicit_dims=(time, x, sp_yi))
 # eq1 = Eq(yind, sp_sm[x, sp_yi], implicit_dims=(time, x, sp_yi))
-# myexpr = save_src[time, source_id[x, sp_sm[x, sp_yi]]]
-eq1 = Inc(u.forward[t, x, sp_sm[x, sp_yi]], save_src[time, source_id[x, sp_sm[x, sp_yi]]])
+myexpr = s_mask[x, yind] * save_src[time, source_id[x, yind]]
+eq2 = Inc(u.forward[t, x, yind], myexpr, implicit_dims=(time, x, sp_yi))
 
-src_term2 = [eq0, eq1]
+src_term2 = [eq0, eq1, eq2]
 
 op2 = Operator(src_term2)
 print("===Temporal blocking======================================")
-op2.apply(time=time_range.num - 1, dt=dt)
+op2.apply(time=time_range.num - 1)
 print(norm(u))
 norm_sol = norm(u)
 
