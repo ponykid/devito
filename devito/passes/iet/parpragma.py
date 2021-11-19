@@ -198,6 +198,7 @@ class PragmaShmTransformer(PragmaSimdTransformer):
         return partree
 
     def _make_partree(self, candidates, nthreads=None):
+
         assert candidates
         root = candidates[0]
 
@@ -289,7 +290,6 @@ class PragmaShmTransformer(PragmaSimdTransformer):
         for tree in retrieve_iteration_tree(partree):
             outer = tree[:partree.ncollapsed]
             inner = tree[partree.ncollapsed:]
-
             # Heuristic: nested parallelism is applied only if the top nested
             # parallel Iteration iterates *within* the top outer parallel Iteration
             # (i.e., the outer is a loop over blocks, while the nested is a loop
@@ -373,6 +373,7 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
         self.gpu_fit = options['gpu-fit']
         self.par_tile = options['par-tile']
         self.par_disabled = options['par-disabled']
+        self.thread_limit = options['thread-limit']
 
     def _is_offloadable(self, iet):
         expressions = FindNodes(Expression).visit(iet)
@@ -391,7 +392,7 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
         else:
             return super()._make_threaded_prodders(partree)
 
-    def _make_partree(self, candidates, nthreads=None):
+    def _make_partree(self, candidates, nthreads=None, thread_limit=1):
         """
         Parallelize the `candidates` Iterations. In particular:
 
@@ -403,6 +404,9 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
             * All other PARALLEL Iterations (typically, the majority) are
               offloaded to the device.
         """
+        if self.nhyperthreads > self.nested:
+            t_limit = 64  # thread limit
+
         assert candidates
         root = candidates[0]
 
@@ -410,9 +414,19 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
             # Get the collapsable Iterations
             collapsable = self._find_collapsable(root, candidates)
             ncollapse = 1 + len(collapsable)
+            #    body = self.DeviceIteration(nthreads=self.thread_limit, **root.args)
+            if nthreads is None and not thread_limit:
+                body = self.DeviceIteration(gpu_fit=self.gpu_fit, ncollapse=ncollapse,
+                                            **root.args)
+            elif nthreads is None and t_limit > thread_limit:
+                # pragma ... for ... schedule(..., 1)
+                body = self.DeviceIteration(gpu_fit=self.gpu_fit, nthreads=t_limit, ncollapse=ncollapse, **root.args)
+            elif nthreads and thread_limit < t_limit:
+                import pdb;pdb.set_trace()
+                body = self.DeviceIteration(gpu_fit=self.gpu_fit, nthreads=65, ncollapse=ncollapse, **root.args)
+            else:
+                body = self.DeviceIteration(gpu_fit=self.gpu_fit, nthreads=2, ncollapse=ncollapse, **root.args)
 
-            body = self.DeviceIteration(gpu_fit=self.gpu_fit, ncollapse=ncollapse,
-                                        **root.args)
             partree = ParallelTree([], body, nthreads=nthreads)
 
             return root, partree
@@ -457,11 +471,54 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
         return parregion
 
     def _make_nested_partree(self, partree):
-        if isinstance(partree.root, self.DeviceIteration):
-            # no-op for now
-            return partree
-        else:
+        # Apply heuristic
+        if not isinstance(partree.root, self.DeviceIteration):
             return super()._make_nested_partree(partree)
+        else:
+            # no-op for now
+            if self.nhyperthreads <= self.nested:
+                return partree
+
+            # Note: there might be multiple sub-trees amenable to nested parallelism,
+            # hence we loop over all of them
+            #
+            # for (i = ... )  // outer parallelism
+            #   for (j0 = ...)  // first source of nested parallelism
+            #     ...
+            #   for (j1 = ...)  // second source of nested parallelism
+            #     ...
+
+            mapper = {}
+            for tree in retrieve_iteration_tree(partree):
+                outer = tree[:partree.ncollapsed]
+                inner = tree[partree.ncollapsed:]
+                # Heuristic: nested parallelism is applied only if the top nested
+                # parallel Iteration iterates *within* the top outer parallel Iteration
+                # (i.e., the outer is a loop over blocks, while the nested is a loop
+                # within a block)
+                candidates = []
+                for i in inner:
+                    if self.key(i) and any((i.dim.root is j.dim.root) for j in outer):
+                        candidates.append(i)
+                    elif candidates:
+                        # If there's at least one candidate but `i` doesn't honor the
+                        # heuristic above, then we break, as the candidates must be
+                        # perfectly nested
+                        break
+                if not candidates:
+                    continue
+
+                # Introduce nested parallelism
+                subroot, subpartree = self._make_partree(candidates, self.nthreads_nested, thread_limit=128)
+
+
+                mapper[subroot] = subpartree
+                
+                if mapper:
+                    import pdb;pdb.set_trace()
+            partree = Transformer(mapper).visit(partree)
+
+            return partree
 
 
 class PragmaLangBB(LangBB):

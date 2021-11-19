@@ -36,7 +36,7 @@ class OmpIteration(ParallelIteration):
 
     @classmethod
     def _make_clauses(cls, ncollapse=None, chunk_size=None, nthreads=None,
-                      reduction=None, schedule=None, **kwargs):
+                      reduction=None, schedule=None, thread_limit=None, **kwargs):
         clauses = []
 
         clauses.append('collapse(%d)' % (ncollapse or 1))
@@ -68,14 +68,19 @@ class OmpIteration(ParallelIteration):
 class DeviceOmpIteration(OmpIteration):
 
     @classmethod
-    def _make_construct(cls, **kwargs):
-        return 'omp target teams distribute parallel for'
+    def _make_construct(cls, nthreads=None, parallel=False, **kwargs):
+        if nthreads and nthreads > 10:
+            return 'omp target teams distribute parallel for thread_limit(64)'
+        elif nthreads:
+            return 'omp parallel for'
+        else:
+            return 'omp target teams distribute parallel for'
 
     @classmethod
     def _make_clauses(cls, **kwargs):
         kwargs['chunk_size'] = False
+        kwargs['nthreads'] = False
         clauses = super()._make_clauses(**kwargs)
-
         symbols = FindSymbols().visit(kwargs['nodes'])
         deviceptrs = [i.name for i in symbols if i.is_Array and i._mem_default]
         if deviceptrs:
@@ -88,6 +93,10 @@ class DeviceOmpIteration(OmpIteration):
         kwargs = super()._process_kwargs(**kwargs)
 
         kwargs.pop('gpu_fit', None)
+        kwargs.pop('schedule', None)
+        kwargs.pop('parallel', False)
+        kwargs.pop('chunk_size', None)
+        kwargs.pop('nthreads', None)
 
         return kwargs
 
