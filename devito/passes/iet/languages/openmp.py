@@ -94,10 +94,6 @@ class DeviceOmpIteration(OmpIteration):
         kwargs = super()._process_kwargs(**kwargs)
 
         kwargs.pop('gpu_fit', None)
-        kwargs.pop('schedule', None)
-        kwargs.pop('parallel', False)
-        kwargs.pop('chunk_size', None)
-        kwargs.pop('nthreads', None)
 
         return kwargs
 
