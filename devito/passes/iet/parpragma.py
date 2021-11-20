@@ -474,11 +474,9 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
         return parregion
 
     def _make_nested_partree(self, partree):
-        # Apply heuristic
         if not isinstance(partree.root, self.DeviceIteration):
             return super()._make_nested_partree(partree)
         else:
-            # no-op for now
             if self.nhyperthreads <= self.nested:
                 return partree
 
@@ -511,7 +509,7 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
                 if not candidates:
                     continue
 
-                # Introduce nested parallelism
+                # Introduce nested parallelism to outer level
                 subroot, subpartree = self._make_partree(candidates, self.nthreads_nested,
                                                          thread_limit=128)
 
