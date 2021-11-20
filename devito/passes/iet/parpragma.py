@@ -392,7 +392,7 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
         else:
             return super()._make_threaded_prodders(partree)
 
-    def _make_partree(self, candidates, nthreads=None, thread_limit=1):
+    def _make_partree(self, candidates, nthreads=None, thread_limit=None):
         """
         Parallelize the `candidates` Iterations. In particular:
 
@@ -404,11 +404,14 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
             * All other PARALLEL Iterations (typically, the majority) are
               offloaded to the device.
         """
-        if self.nhyperthreads > self.nested:
-            t_limit = 64  # thread limit
+        if self.nhyperthreads <= self.nested:
+            return self
 
+        thread_limit = thread_limit or self.thread_limit
         assert candidates
         root = candidates[0]
+
+        threshold = 64
 
         if self._is_offloadable(root):
             # Get the collapsable Iterations
@@ -418,14 +421,15 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
             if nthreads is None and not thread_limit:
                 body = self.DeviceIteration(gpu_fit=self.gpu_fit, ncollapse=ncollapse,
                                             **root.args)
-            elif nthreads is None and t_limit > thread_limit:
-                # pragma ... for ... schedule(..., 1)
-                body = self.DeviceIteration(gpu_fit=self.gpu_fit, nthreads=t_limit, ncollapse=ncollapse, **root.args)
-            elif nthreads and thread_limit < t_limit:
-                import pdb;pdb.set_trace()
-                body = self.DeviceIteration(gpu_fit=self.gpu_fit, nthreads=65, ncollapse=ncollapse, **root.args)
+            elif nthreads is None and threshold > thread_limit:
+                body = self.DeviceIteration(gpu_fit=self.gpu_fit, nthreads=threshold,
+                                            ncollapse=ncollapse, **root.args)
+            elif nthreads and threshold > thread_limit:
+                body = self.DeviceIteration(gpu_fit=self.gpu_fit, nthreads=threshold,
+                                            ncollapse=ncollapse, **root.args)
             else:
-                body = self.DeviceIteration(gpu_fit=self.gpu_fit, nthreads=2, ncollapse=ncollapse, **root.args)
+                body = self.DeviceIteration(gpu_fit=self.gpu_fit, nthreads=1,
+                                            ncollapse=ncollapse, **root.args)
 
             partree = ParallelTree([], body, nthreads=nthreads)
 
@@ -509,13 +513,11 @@ class PragmaDeviceAwareTransformer(DeviceAwareMixin, PragmaShmTransformer):
                     continue
 
                 # Introduce nested parallelism
-                subroot, subpartree = self._make_partree(candidates, self.nthreads_nested, thread_limit=128)
-
+                subroot, subpartree = self._make_partree(candidates, self.nthreads_nested,
+                                                         thread_limit=128)
 
                 mapper[subroot] = subpartree
-                
-                if mapper:
-                    import pdb;pdb.set_trace()
+
             partree = Transformer(mapper).visit(partree)
 
             return partree
