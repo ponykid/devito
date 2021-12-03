@@ -328,7 +328,7 @@ def generate_block_shapes(blockable, args, level):
             for v in options['blocksize-l1']:
                 # To be a valid blocksize, it must be smaller than and divide evenly
                 # the parent's block size
-                if all(v <= i and i % v == 0 for _, i in bs):
+                if all(v <= i/4 and i % v == 0 for _, i in bs):
                     ret.append(bs + tuple((d.step, v) for d in level_1))
             ret.remove(bs)
 
@@ -376,7 +376,7 @@ def generate_nthreads(nthreads, args, level):
 
 options = {
     'squeezer': 4,
-    'blocksize-l0': (8, 16, 24, 32, 64, 96, 128),
+    'blocksize-l0': (8, 16, 24, 32, 64, 128),
     'blocksize-l1': (8, 16, 32),
 }
 """Autotuning options."""

@@ -1619,8 +1619,7 @@ class TestAliases(object):
                                _R(u[t, x+2, y+2, z+2] + u[t, x+3, y+3, z+3])*3. + 1.))
 
         op0 = Operator(eqn, opt=('noop', {'openmp': True}))
-        op1 = Operator(eqn, opt=('advanced-fsg', {'openmp': True,
-                                 'cire-mingain': 0}))
+        op1 = Operator(eqn, opt=('advanced-fsg', {'openmp': True, 'cire-mingain': 0}))
 
         # Check code generation
         bns, _ = assert_blocking(op1, {'x0_blk0', 'x1_blk0'})
