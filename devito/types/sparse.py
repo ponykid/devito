@@ -773,6 +773,73 @@ class SparseFunction(AbstractSparseFunction):
     _pickle_kwargs = AbstractSparseFunction._pickle_kwargs + ['coordinates_data']
 
 
+class SparsePointFunction(AbstractSparseFunction):
+    """
+    Tensor symbol representing a sparse array in symbolic equations.
+
+    A SparseFunction carries multi-dimensional data that *aligned* with
+    the computational grid. As such, each data value is associated some coordinates.
+    A SparseFunction provides symbolic interpolation routines to convert between
+    Functions and sparse data points.
+
+    Parameters
+    ----------
+    name : str
+        Name of the symbol.
+    npoint : int
+        Number of sparse points.
+    grid : Grid
+        The computational domain from which the sparse points are sampled.
+    coordinates : np.ndarray, optional
+        The coordinates of each sparse point.
+    space_order : int, optional
+        Discretisation order for space derivatives. Defaults to 0.
+    shape : tuple of ints, optional
+        Shape of the object. Defaults to ``(npoint,)``.
+    dimensions : tuple of Dimension, optional
+        Dimensions associated with the object. Only necessary if the SparseFunction
+        defines a multi-dimensional tensor.
+    dtype : data-type, optional
+        Any object that can be interpreted as a numpy data type. Defaults
+        to ``np.float32``.
+    initializer : callable or any object exposing the buffer interface, optional
+        Data initializer. If a callable is provided, data is allocated lazily.
+    allocator : MemoryAllocator, optional
+        Controller for memory allocation. To be used, for example, when one wants
+        to take advantage of the memory hierarchy in a NUMA architecture. Refer to
+        `default_allocator.__doc__` for more information.
+
+    Examples
+    --------
+
+    Creation
+
+    >>> from devito import Grid, SparseFunction
+    >>> grid = Grid(shape=(4, 4))
+    >>> sf = SparseFunction(name='sf', grid=grid, npoint=2)
+    >>> sf
+    sf(p_sf)
+
+    Inspection
+
+    >>> sf.data
+    Data([0., 0.], dtype=float32)
+    >>> sf.coordinates
+    sf_coords(p_sf, d)
+    >>> sf.coordinates_data
+    array([[0., 0.],
+           [0., 0.]], dtype=float32)
+
+    Symbolic interpolation routines
+
+    >>> from devito import Function
+    >>> f = Function(name='f', grid=grid)
+    >>> exprs0 = sf.interpolate(f)
+    >>> exprs1 = sf.inject(f, sf)
+
+    """
+
+
 class SparseTimeFunction(AbstractSparseTimeFunction, SparseFunction):
     """
     Tensor symbol representing a space- and time-varying sparse array in symbolic
