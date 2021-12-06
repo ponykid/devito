@@ -54,7 +54,7 @@ op0.apply(time_M=nt, dt=dt)
 norm_u = norm(u)
 u.data[:] = init_value
 
-op1 = Operator(eq0, opt=('advanced', {'skewing': True, 'blocking': True,
+op1 = Operator(eq0, opt=('advanced', {'skewing': True,
                          'blocklevels': 2}))
 
 op1.apply(time_M=nt, dt=dt)
