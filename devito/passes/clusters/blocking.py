@@ -4,7 +4,7 @@ from sympy import Mod
 from devito.ir.clusters import Queue
 from devito.ir.support import (PARALLEL, SEQUENTIAL, SKEWABLE, TILABLE, Interval,
                                IntervalGroup, IterationSpace)
-from devito.symbolics import (uxreplace, xreplace_indices, evalmax, evalmin,
+from devito.symbolics import (uxreplace, xreplace_indices, evalrel,
                               retrieve_indexed, INT)
 from devito.tools import as_list, as_tuple
 from devito.types import RIncrDimension
@@ -146,7 +146,7 @@ def create_block_dims(name, d, levels, **kwargs):
         block_dims.append(bd)
 
     bd = RIncrDimension(d.name, bd, bd, bd + bd.step - 1, 1, size=size,
-                        rmax=evalmin(bd + bd.step - 1, sf*d.root.symbolic_max),
+                        rmax=evalrel(min, [bd + bd.step - 1, sf*d.root.symbolic_max]),
                         rstep=sf)
     block_dims.append(bd)
 
@@ -431,8 +431,8 @@ class RelaxSkewed(Queue):
                         intervals.append(Interval(sd, i.lower, i.upper))
                         mapper.update({i.dim: sd})
                     elif i.dim._depth == 2:
-                        rmin = evalmax(i.dim.symbolic_min,
-                                       i.dim.root.symbolic_min + skew_dim)
+                        rmin = evalrel(max, [i.dim.symbolic_min,
+                                       i.dim.root.symbolic_min + skew_dim])
                         rmax = i.dim.symbolic_rmax.xreplace({i.dim.root.symbolic_max:
                                                             i.dim.root.symbolic_max +
                                                             skew_dim})
@@ -440,9 +440,8 @@ class RelaxSkewed(Queue):
                         intervals.append(Interval(sd2, i.lower, i.upper))
                         mapper.update({i.dim: sd2})
                     elif i.dim._depth > 2:
-                        rmax = i.dim.symbolic_rmax.xreplace({i.dim.symbolic_rmax:
-                                                            evalmin(sd2.symbolic_rmax,
-                                                                    i.dim.symbolic_max)})
+                        res = evalrel(min, [sd2.symbolic_rmax, i.dim.symbolic_max])
+                        rmax = i.dim.symbolic_rmax.xreplace({i.dim.symbolic_rmax: res})
                         sd3 = i.dim.func(parent=sd2, rmax=rmax)
                         intervals.append(Interval(sd3, i.lower, i.upper))
                         mapper.update({i.dim: sd3})

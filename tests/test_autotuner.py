@@ -273,13 +273,13 @@ def test_hierarchical_blocking(opt_options):
 
     # 'basic' mode
     op.apply(time_M=0, autotune='basic')
-    assert op._state['autotuning'][0]['runs'] == 10
+    assert op._state['autotuning'][0]['runs'] == 3
     assert op._state['autotuning'][0]['tpr'] == options['squeezer'] + 1
     assert len(op._state['autotuning'][0]['tuned']) == 4
 
     # 'aggressive' mode
     op.apply(time_M=0, autotune='aggressive')
-    assert op._state['autotuning'][1]['runs'] == 38
+    assert op._state['autotuning'][1]['runs'] == 6
     assert op._state['autotuning'][1]['tpr'] == options['squeezer'] + 1
     assert len(op._state['autotuning'][1]['tuned']) == 4
 

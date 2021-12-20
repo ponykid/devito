@@ -4,11 +4,7 @@ from devito.ir import (Forward, List, Prodder, FindNodes, Transformer,
                        filter_iterations, retrieve_iteration_tree)
 from devito.logger import warning
 from devito.passes.iet.engine import iet_pass
-<<<<<<< HEAD
-from devito.symbolics import MIN, MAX, evalrel
-=======
 from devito.symbolics import MIN, MAX
->>>>>>> 894026a1c (compiler: relax by subclassing Incr)
 from devito.tools import is_integer, split
 
 __all__ = ['avoid_denormals', 'hoist_prodders', 'relax_incr_dimensions', 'is_on_device']
