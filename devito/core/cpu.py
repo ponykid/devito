@@ -5,7 +5,7 @@ from devito.exceptions import InvalidOperator
 from devito.passes.equations import collect_derivatives
 from devito.passes.clusters import (Lift, blocking, buffering, cire, cse,
                                     extract_increments, factorize, fission, fuse,
-                                    optimize_pows, optimize_msds)
+                                    optimize_pows, optimize_msds, align)
 from devito.passes.iet import (CTarget, OmpTarget, avoid_denormals, linearize, mpiize,
                                hoist_prodders, relax_incr_dimensions)
 from devito.tools import timed_pass
@@ -186,6 +186,9 @@ class Cpu64AdvOperator(Cpu64OperatorMixin, CoreOperator):
         # Reduce flops
         clusters = cse(clusters, sregistry)
 
+        # Blocking to improve data locality
+        clusters = align(clusters, sregistry)
+
         return clusters
 
     @classmethod
@@ -307,6 +310,7 @@ class Cpu64CustomOperator(Cpu64OperatorMixin, CustomOperator):
                                                   options, platform)),
             'cire-sops': lambda i: cire(i, 'sops', sregistry, options, platform),
             'cse': lambda i: cse(i, sregistry),
+            'align': lambda i: align(i, sregistry),
             'opt-pows': optimize_pows,
             'topofuse': lambda i: fuse(i, toposort=True, options=options)
         }
@@ -339,7 +343,7 @@ class Cpu64CustomOperator(Cpu64OperatorMixin, CustomOperator):
         'buffering',
         # Clusters
         'blocking', 'topofuse', 'fission', 'fuse', 'factorize', 'cire-sops',
-        'cse', 'lift', 'opt-pows',
+        'cse', 'lift', 'opt-pows', 'align',
         # IET
         'denormals', 'openmp', 'mpi', 'linearize', 'simd', 'prodders',
     )
