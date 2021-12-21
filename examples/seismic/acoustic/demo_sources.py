@@ -6,7 +6,7 @@ from examples.seismic import TimeAxis, RickerSource
 import sys
 np.set_printoptions(threshold=sys.maxsize)  # pdb print full size
 
-shape = (21, 21)
+shape = (2100, 2100)
 extent = (100, 100)
 origin = (0., 0.)
 
@@ -35,8 +35,8 @@ src.coordinates.data[0, -1] = 11
 src.coordinates.data[1, :] = domain_size*.545
 src.coordinates.data[1, -1] = 11
 
-
 src_term2, u = aligner(grid, v, src, dt, time_range)
+import pdb;pdb.set_trace()
 op2 = Operator(src_term2)
 
 print("===Temporal blocking======================================")
@@ -52,7 +52,5 @@ print(norm_sol)
 # plt.plot(save_src.data[:, 0]); pause(1)
 # plt.plot(src.data[:, 0]); pause(1)
 # plt.plot(src.data[:, 1]); pause(1)
-
-# import pdb;pdb.set_trace()
 
 # plt.plot(save_src); pause(1)
