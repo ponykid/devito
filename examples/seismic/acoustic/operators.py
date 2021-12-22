@@ -1,6 +1,6 @@
 from devito import Eq, Operator, Function, TimeFunction, Inc, solve, sign
 from devito.symbolics import retrieve_functions, INT
-from examples.seismic import PointSource, Receiver
+from examples.seismic import PointSource, Receiver, RickerSource
 from aligner import term_aligner
 
 
@@ -120,8 +120,8 @@ def ForwardOperator(model, geometry, space_order=4,
     u = TimeFunction(name='u', grid=model.grid,
                      save=geometry.nt if save else None,
                      time_order=2, space_order=space_order)
-    src = PointSource(name='src', grid=geometry.grid, time_range=geometry.time_axis,
-                      npoint=geometry.nsrc)
+    src = RickerSource(name='src', grid=geometry.grid, time_range=geometry.time_axis,
+                       npoint=geometry.nsrc)
 
     # rec = Receiver(name='rec', grid=geometry.grid, time_range=geometry.time_axis,
     #               npoint=geometry.nrec)
@@ -132,7 +132,8 @@ def ForwardOperator(model, geometry, space_order=4,
     # Construct expression to inject source values
     src_term = src.inject(field=u.forward, expr=src * s**2 / m)
 
-    src_term2 = term_aligner(src_term, geometry)
+    import pdb;pdb.set_trace()
+    src_term2 = term_aligner(u, src, src_term, geometry)
 
     # Create interpolation expression for receivers
     # rec_term = rec.interpolate(expr=u)

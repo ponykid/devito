@@ -93,32 +93,34 @@ def aligner(grid, v, src, dt, time_range):
     return src_term2, u
 
 
-
-
-def term_aligner(src_term, geometry):
+def term_aligner(u, src, src_term, geometry):
 
     grid = src_term.field.grid
 
-    import pdb;pdb.set_trace()
     x, y, z = grid.dimensions
     time = grid.time_dim
     t = grid.stepping_dim
 
-    # u = TimeFunction(name="u", grid=grid, space_order=2)
+    u = TimeFunction(name="u", grid=grid, space_order=2)
     # m = Function(name='m', grid=grid)
     # m.data[:] = 1./(v*v)
 
     # Injection to field u.forward
-    # src_term = src.inject(field=u.forward, expr=src * dt**2 / m)
-    op = Operator(src_term)
-    op(time=geometry.time_axis.num-1, dt=geometry.dt)
+
+    src_term2 = src.inject(field=u.forward, expr=src_term.expr)
+
+    op = Operator(src_term2)
+    time_range = geometry.time_axis
+    op(time=time_range.num-1, dt=geometry.dt)
     # norm_ref = norm(u)
     # print(norm_ref)
     # u2 = u
-    # import pdb;pdb.set_trace()
+    import pdb;pdb.set_trace()
     # Get the nonzero indices to nzinds tuple
     nzinds = np.nonzero(u.data[0])
     assert len(nzinds) == len(grid.shape)
+
+    import pdb;pdb.set_trace()
 
     # Create source mask and source id
     s_mask = Function(name='s_mask', shape=grid.shape,
