@@ -1,6 +1,7 @@
 from devito import Eq, Operator, Function, TimeFunction, Inc, solve, sign
 from devito.symbolics import retrieve_functions, INT
 from examples.seismic import PointSource, Receiver
+from aligner import term_aligner
 
 
 def freesurface(model, eq):
@@ -122,8 +123,8 @@ def ForwardOperator(model, geometry, space_order=4,
     src = PointSource(name='src', grid=geometry.grid, time_range=geometry.time_axis,
                       npoint=geometry.nsrc)
 
-    rec = Receiver(name='rec', grid=geometry.grid, time_range=geometry.time_axis,
-                   npoint=geometry.nrec)
+    # rec = Receiver(name='rec', grid=geometry.grid, time_range=geometry.time_axis,
+    #               npoint=geometry.nrec)
 
     s = model.grid.stepping_dim.spacing
     eqn = iso_stencil(u, model, kernel)
@@ -131,11 +132,13 @@ def ForwardOperator(model, geometry, space_order=4,
     # Construct expression to inject source values
     src_term = src.inject(field=u.forward, expr=src * s**2 / m)
 
+    src_term2 = term_aligner(src_term, geometry)
+
     # Create interpolation expression for receivers
-    rec_term = rec.interpolate(expr=u)
+    # rec_term = rec.interpolate(expr=u)
 
     # Substitute spacing terms to reduce flops
-    return Operator(eqn + src_term + rec_term, subs=model.spacing_map,
+    return Operator(eqn + src_term2, subs=model.spacing_map,
                     name='Forward', **kwargs)
 
 
