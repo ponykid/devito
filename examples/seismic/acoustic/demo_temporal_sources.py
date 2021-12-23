@@ -7,6 +7,7 @@ import argparse
 from devito.logger import info
 from devito import TimeFunction, Function, Dimension, Eq, Inc, solve
 from devito import Operator, norm, configuration
+from devito.tools import as_list
 from examples.seismic import RickerSource, TimeAxis
 from examples.seismic import Model
 import sys
@@ -63,7 +64,7 @@ dt = model.critical_dt  # Time step from model grid spacing
 time_range = TimeAxis(start=t0, stop=tn, step=dt)
 f0 = 0.010  # Source peak frequency is 10Hz (0.010 kHz)
 src = RickerSource(name='src', grid=model.grid, f0=f0,
-                   npoint=1, time_range=time_range)
+                   npoint=3, time_range=time_range)
 
 
 # First, position source centrally in all dimensions, then set depth
@@ -87,12 +88,12 @@ src.coordinates.data[:, -1] = 20  # Depth is 20m
 #pause(1)
 
 # f : perform source injection on an empty grid
-f = TimeFunction(name="f", grid=model.grid, space_order=so, time_order=2)
+f = TimeFunction(name='f', grid=model.grid, space_order=so, time_order=2)
 src_f = src.inject(field=f.forward, expr=src * dt**2 / model.m)
 # op_f = Operator([src_f], opt=('advanced', {'openmp': True}))
-op_f = Operator([src_f])
+op_f = Operator(src_f)
 
-op_f.apply(time=time_range.num-1)
+op_f.apply(time=time_range.num-1, dt=dt)
 normf = norm(f)
 print("==========")
 print(normf)
@@ -111,8 +112,8 @@ assert len(nzinds) == len(shape)
 shape = model.grid.shape
 x, y, z = model.grid.dimensions
 time = model.grid.time_dim
-source_mask = Function(name='source_mask', shape=shape, dimensions=(x, y, z), space_order=0, dtype=np.float32)
-source_id = Function(name='source_id', shape=shape, dimensions=(x, y, z), space_order=0, dtype=np.int32)
+source_mask = Function(name='source_mask', shape=shape, dimensions=model.grid.dimensions, dtype=np.int32)
+source_id = Function(name='source_id', shape=shape, dimensions=model.grid.dimensions, dtype=np.int32)
 info("source_id data indexes start from 1 not 0 !!!")
 
 # source_id.data[nzinds[0], nzinds[1], nzinds[2]] = tuple(np.arange(1, len(nzinds[0])+1))
@@ -136,7 +137,7 @@ info("-At this point source_mask and source_id have been popoulated correctly-")
 
 nnz_shape = (model.grid.shape[0], model.grid.shape[1])  # Change only 3rd dim
 
-nnz_sp_source_mask = Function(name='nnz_sp_source_mask', shape=(list(nnz_shape)), dimensions=(x, y), space_order=0, dtype=np.int32)
+nnz_sp_source_mask = Function(name='nnz_sp_source_mask', shape=as_list(nnz_shape), dimensions=(x, y), dtype=np.int32)
 
 
 nnz_sp_source_mask.data[:, :] = source_mask.data[:, :, :].sum(2)
@@ -156,7 +157,8 @@ b_dim = Dimension(name='b_dim')
 save_src = TimeFunction(name='save_src', shape=(src.shape[0],
                         nzinds[1].shape[0]), dimensions=(src.dimensions[0], id_dim))
 
-save_src_term = src.inject(field=save_src[src.dimensions[0], source_id], expr=src * dt**2 / model.m)
+import pdb; pdb.set_trace()
+save_src_term = src.inject(field=save_src[src.dimensions[0], source_id], expr=src_term_ref.expr)
 
 op1 = Operator([save_src_term])
 op1.apply(time=time_range.num-1, dt=dt)
@@ -206,14 +208,13 @@ eqyb = Eq(yb_size, block_sizes[1])
 eqxb2 = Eq(x0_blk0_size, block_sizes[2])
 eqyb2 = Eq(y0_blk0_size, block_sizes[3])
 
-# import pdb; pdb.set_trace()
 # plot3d(source_mask.data, model)
 
-opref = Operator([stencil_ref, src_term_ref], opt=('advanced', {'openmp': True}))
+opref = Operator([stencil_ref, src_term_ref])
 print("===Space blocking==")
-configuration['autotuning']='aggressive'
+# configuration['autotuning']='aggressive'
 opref.apply(time=time_range.num-2, dt=model.critical_dt)
-configuration['autotuning']='off'
+# configuration['autotuning']='off'
 print("===========")
 
 normuref = norm(uref)
@@ -223,7 +224,7 @@ print("===========")
 
 
 print("-----")
-op2 = Operator([eqxb, eqyb, eqxb2, eqyb2, stencil_2, eq0, eq1, eq2], eqxb=32, opt=('advanced'))
+op2 = Operator([eqxb, eqyb, eqxb2, eqyb2, stencil_2, eq0, eq1, eq2], eqxb=32)
 # print(op2.ccode)
 print("===Temporal blocking======================================")
 op2.apply(time=time_range.num-1, dt=model.critical_dt)
