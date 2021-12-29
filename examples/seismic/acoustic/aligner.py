@@ -115,12 +115,12 @@ def term_aligner(u, src, src_term, geometry):
     # norm_ref = norm(u)
     # print(norm_ref)
     # u2 = u
-    import pdb;pdb.set_trace()
+    #import pdb;pdb.set_trace()
     # Get the nonzero indices to nzinds tuple
     nzinds = np.nonzero(u.data[0])
     assert len(nzinds) == len(grid.shape)
 
-    import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
 
     # Create source mask and source id
     s_mask = Function(name='s_mask', shape=grid.shape,

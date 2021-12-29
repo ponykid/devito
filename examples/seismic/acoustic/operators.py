@@ -1,7 +1,7 @@
 from devito import Eq, Operator, Function, TimeFunction, Inc, solve, sign
 from devito.symbolics import retrieve_functions, INT
 from examples.seismic import PointSource, Receiver, RickerSource
-from aligner import term_aligner
+from .aligner import term_aligner
 
 
 def freesurface(model, eq):
@@ -132,7 +132,7 @@ def ForwardOperator(model, geometry, space_order=4,
     # Construct expression to inject source values
     src_term = src.inject(field=u.forward, expr=src * s**2 / m)
 
-    import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
     src_term2 = term_aligner(u, src, src_term, geometry)
 
     # Create interpolation expression for receivers
