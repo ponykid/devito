@@ -231,6 +231,9 @@ class LinearInterpolator(GenericInterpolator):
             variables = list(retrieve_function_carriers(_expr))
 
             # Need to get origin of the field in case it is staggered
+
+
+
             # TODO: handle each variable staggereing spearately
             field_offset = variables[0].origin
             # List of indirection indices for all adjacent grid points
@@ -279,7 +282,13 @@ class LinearInterpolator(GenericInterpolator):
             variables = list(retrieve_function_carriers(_expr)) + [field]
 
             # Need to get origin of the field in case it is staggered
-            field_offset = field.origin
+            for ind in field.indices:
+                try:
+                    field_offset = field.indices[1].origin
+                except AttributeError:
+                    field_offset = field.origin
+            
+            # field_offset = field.origin
             # List of indirection indices for all adjacent grid points
             idx_subs, temps = self._interpolation_indices(variables, offset,
                                                           field_offset=field_offset)

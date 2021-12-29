@@ -11,6 +11,7 @@ from examples.seismic import RickerSource, TimeAxis
 from examples.seismic import Model
 import sys
 np.set_printoptions(threshold=sys.maxsize)  # pdb print full size
+
 from devito.types.basic import Scalar, Symbol # noqa
 from mpl_toolkits.mplot3d import Axes3D # noqa
 
@@ -32,7 +33,7 @@ parser.add_argument("-d", "--shape", default=(11, 11, 11), type=int, nargs="+",
                     help="Number of grid points along each axis")
 parser.add_argument("-so", "--space_order", default=4,
                     type=int, help="Space order of the simulation")
-parser.add_argument("-tn", "--tn", default=40,
+parser.add_argument("-tn", "--tn", default=100,
                     type=float, help="Simulation time in millisecond")
 parser.add_argument("-bs", "--bsizes", default=(8, 8, 32, 32), type=int, nargs="+",
                     help="Block and tile sizes")
@@ -62,7 +63,7 @@ dt = model.critical_dt  # Time step from model grid spacing
 time_range = TimeAxis(start=t0, stop=tn, step=dt)
 f0 = 0.010  # Source peak frequency is 10Hz (0.010 kHz)
 src = RickerSource(name='src', grid=model.grid, f0=f0,
-                   npoint=9, time_range=time_range)
+                   npoint=3, time_range=time_range)
 
 
 # First, position source centrally in all dimensions, then set depth
@@ -71,12 +72,22 @@ stx = 0.1
 ste = 0.9
 stepx = (ste-stx)/int(np.sqrt(src.npoint))
 
-src.coordinates.data[:, :2] = np.array(np.meshgrid(np.arange(stx, ste, stepx), np.arange(stx, ste, stepx))).T.reshape(-1,2)*np.array(model.domain_size[:1])
+# src.coordinates.data[:, :2] = np.array(np.meshgrid(np.arange(stx, ste, stepx), np.arange(stx, ste, stepx))).T.reshape(-1,2)*np.array(model.domain_size[:1])
+# src.coordinates.data[:, -1] = 20  # Depth is 20m
 
-src.coordinates.data[:, -1] = 20  # Depth is 20m
+
+src.coordinates.data[0, :] = np.array(model.domain_size) * .175
+src.coordinates.data[0, -1] = 20  # Depth is 20m
+src.coordinates.data[1, :] = np.array(model.domain_size) * .175
+src.coordinates.data[1, -1] = 20  # Depth is 20m
+src.coordinates.data[2, :] = np.array(model.domain_size) * .545
+src.coordinates.data[2, -1] = 20  # Depth is 20m
+
 
 # f : perform source injection on an empty grid
-f = TimeFunction(name="f", grid=model.grid, space_order=so, time_order=2)
+f = TimeFunction(name="f", grid=model.grid, dimensions=model.grid.dimensions,
+                 shape=model.grid.shape, space_order=so, time_order=2)
+
 src_f = src.inject(field=f.forward, expr=src * dt**2 / model.m)
 # op_f = Operator([src_f], opt=('advanced', {'openmp': True}))
 op_f = Operator([src_f])

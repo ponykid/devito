@@ -11,6 +11,7 @@ from examples.seismic import RickerSource, TimeAxis
 from examples.seismic import Model
 import sys
 np.set_printoptions(threshold=sys.maxsize)  # pdb print full size
+
 from devito.types.basic import Scalar, Symbol # noqa
 from mpl_toolkits.mplot3d import Axes3D # noqa
 
@@ -76,7 +77,7 @@ src.coordinates.data[:, :2] = np.array(np.meshgrid(np.arange(stx, ste, stepx), n
 src.coordinates.data[:, -1] = 20  # Depth is 20m
 
 # f : perform source injection on an empty grid
-f = TimeFunction(name="f", grid=model.grid, space_order=so, time_order=2)
+f = TimeFunction(name="f", grid=model.grid, shape=model.grid.shape, dimensions=model.grid.dimensions, space_order=so, time_order=2)
 src_f = src.inject(field=f.forward, expr=src * dt**2 / model.m)
 # op_f = Operator([src_f], opt=('advanced', {'openmp': True}))
 op_f = Operator([src_f])
@@ -94,7 +95,7 @@ print("===========")
 
 #Get the nonzero indices
 nzinds = np.nonzero(f.data[0])  # nzinds is a tuple
-import pdb;pdb.set_trace()
+print(nzinds)
 assert len(nzinds) == len(shape)
 
 shape = model.grid.shape
