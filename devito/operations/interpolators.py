@@ -5,7 +5,7 @@ import numpy as np
 from cached_property import cached_property
 
 from devito.logger import warning
-from devito.symbolics import retrieve_function_carriers, indexify, INT
+from devito.symbolics import retrieve_function_carriers, indexify, INT, retrieve_functions
 from devito.tools import powerset, flatten, prod
 from devito.types import (ConditionalDimension, Dimension, DefaultDimension, Eq, Inc,
                           Evaluable, Symbol, SubFunction)
@@ -231,9 +231,6 @@ class LinearInterpolator(GenericInterpolator):
             variables = list(retrieve_function_carriers(_expr))
 
             # Need to get origin of the field in case it is staggered
-
-
-
             # TODO: handle each variable staggereing spearately
             field_offset = variables[0].origin
             # List of indirection indices for all adjacent grid points
@@ -271,6 +268,7 @@ class LinearInterpolator(GenericInterpolator):
         offset : int, optional
             Additional offset from the boundary.
         """
+
         def callback():
             # Derivatives must be evaluated before the introduction of indirect accesses
             try:
@@ -282,14 +280,15 @@ class LinearInterpolator(GenericInterpolator):
             variables = list(retrieve_function_carriers(_expr)) + [field]
 
             # Need to get origin of the field in case it is staggered
+
             for ind in field.indices:
+                # In case of nested Functions, use them as a field
                 if ind.is_Function:
                     field_offset = ind.origin
                     continue
                 else:
                     field_offset = field.origin
 
-            # field_offset = field.origin
             # List of indirection indices for all adjacent grid points
             idx_subs, temps = self._interpolation_indices(variables, offset,
                                                           field_offset=field_offset)
