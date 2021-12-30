@@ -62,7 +62,7 @@ dt = model.critical_dt  # Time step from model grid spacing
 time_range = TimeAxis(start=t0, stop=tn, step=dt)
 f0 = 0.010  # Source peak frequency is 10Hz (0.010 kHz)
 src = RickerSource(name='src', grid=model.grid, f0=f0,
-                   npoint=1, time_range=time_range)
+                   npoint=3, time_range=time_range)
 
 
 # First, position source centrally in all dimensions, then set depth
@@ -105,6 +105,7 @@ stencil_ref = Eq(uref.forward, solve(pde_ref, uref.forward))
 
 #Get the nonzero indices
 nzinds = np.nonzero(f.data[0])  # nzinds is a tuple
+print(nzinds)
 assert len(nzinds) == len(shape)
 
 shape = model.grid.shape
@@ -192,7 +193,6 @@ eq2 = Inc(usol.forward[t+1, x, y, zind], myexpr, implicit_dims=(time, x, y, sp_z
 
 pde_2 = model.m * usol.dt2 - usol.laplace + model.damp * usol.dt
 stencil_2 = Eq(usol.forward, solve(pde_2, usol.forward))
-
 
 block_sizes = Function(name='block_sizes', shape=(4, ), dimensions=(b_dim,), space_order=0, dtype=np.int32)
 

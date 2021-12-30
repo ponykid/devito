@@ -20,6 +20,7 @@ shape = (210, 210, 210)  # Number of grid point (nx, nz)
 origin = (0., 0., 0.)
 extent = (100, 100, 100)
 
+so = 4
 # Initialize v field
 v = np.empty(shape, dtype=np.float32)
 v[:, :, :40] = 2
@@ -130,19 +131,19 @@ save_src = TimeFunction(name='save_src', shape=(src.shape[0],
 
 save_src_term = src.inject(field=save_src[src.dimensions[0], source_id], expr=src * dt**2 / m)
 
-import pdb;pdb.set_trace()
 op1 = Operator([save_src_term])
 
 op1.apply(time=time_range.num-1)
 
 print("========passs===========")
 
-usol = TimeFunction(name="usol", grid=model.grid, space_order=so, time_order=2)
+usol = TimeFunction(name="usol", grid=grid, space_order=so, time_order=2)
 sp_zi = Dimension(name='sp_zi')
 
 # import pdb; pdb.set_trace()
 
-sp_source_mask = Function(name='sp_source_mask', shape=(list(sparse_shape)), dimensions=(x, y, sp_zi), space_order=0, dtype=np.int32)
+sp_source_mask = Function(name='sp_source_mask', shape=(list(sparse_shape)),
+                          dimensions=(x, y, sp_zi), space_order=0, dtype=np.int32)
 
 # Now holds IDs
 sp_source_mask.data[inds[0], inds[1], :] = tuple(inds[2][:len(np.unique(inds[2]))])
@@ -150,7 +151,7 @@ sp_source_mask.data[inds[0], inds[1], :] = tuple(inds[2][:len(np.unique(inds[2])
 assert(np.count_nonzero(sp_source_mask.data) == len(nzinds[0]))
 assert(len(sp_source_mask.dimensions) == 3)
 
-t = model.grid.stepping_dim
+t = grid.stepping_dim
 
 zind = Scalar(name='zind', dtype=np.int32)
 xb_size = Scalar(name='xb_size', dtype=np.int32)
@@ -161,14 +162,14 @@ y0_blk0_size = Scalar(name='y0_blk0_size', dtype=np.int32)
 eq0 = Eq(sp_zi.symbolic_max, nnz_sp_source_mask[x, y] - 1, implicit_dims=(time, x, y))
 eq1 = Eq(zind, sp_source_mask[x, y, sp_zi], implicit_dims=(time, x, y, sp_zi))
 
-myexpr = source_mask[x, y, zind] * save_src[time, source_id[x, y, zind]]
+myexpr = s_mask[x, y, zind] * save_src[time, source_id[x, y, zind]]
 
 eq2 = Inc(usol.forward[t+1, x, y, zind], myexpr, implicit_dims=(time, x, y, sp_zi))
 
-pde_2 = model.m * usol.dt2 - usol.laplace + model.damp * usol.dt
+import pdb;pdb.set_trace()
+pde_2 = m * usol.dt2 - usol.laplace + model.damp * usol.dt
 stencil_2 = Eq(usol.forward, solve(pde_2, usol.forward))
 
-import pdb;pdb.set_trace()
 block_sizes = Function(name='block_sizes', shape=(4, ), dimensions=(b_dim,), space_order=0, dtype=np.int32)
 
 # import pdb; pdb.set_trace()
