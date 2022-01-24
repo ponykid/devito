@@ -326,7 +326,7 @@ class Call(ExprStmt, Node):
         if self.base is not None:
             ret += (self.base,)
         if self.retobj is not None:
-            ret += (self.retobj,)
+            ret += (self.retobj.base,)
         return ret
 
     @property
@@ -405,7 +405,7 @@ class Expression(ExprStmt, Node):
 
     @property
     def defines(self):
-        return (self.write,) if self.is_initializable else ()
+        return (self.output.base,) if self.is_initializable else ()
 
     @property
     def expr_symbols(self):
@@ -687,7 +687,7 @@ class Callable(Node):
 
     @property
     def defines(self):
-        return tuple(i for i in self.parameters if isinstance(i, AbstractFunction))
+        return self.parameters
 
 
 class CallableBody(Node):
@@ -856,7 +856,10 @@ class Definition(ExprStmt, Node):
 
     @property
     def defines(self):
-        return (self.function,)
+        if self.function.is_LocalObject or self.function.is_ObjectArray:
+            return (self.function.indexed,)
+        else:
+            return (self.function,)
 
 
 class PointerCast(ExprStmt, Node):
@@ -902,7 +905,13 @@ class PointerCast(ExprStmt, Node):
 
     @property
     def defines(self):
-        return (self.function,)
+        f = self.function
+        if f.is_AbstractFunction:
+            return (f.indexed,)
+        elif f.is_PointerArray:
+            from IPython import embed; embed()
+        else:
+            from IPython import embed; embed()
 
 
 class Dereference(ExprStmt, Node):

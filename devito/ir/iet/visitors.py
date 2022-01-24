@@ -330,6 +330,11 @@ class CGen(Visitor):
             return c.Value(f._C_typedata, "**%s" % f._C_name)
         elif f.is_LocalObject:
             return c.Value(f._C_typename, f.name)
+        elif f.is_ObjectArray:
+            if o.shape is None:
+                return c.Value(f._C_typedata, "*%s" % f.name)
+            else:
+                return c.Value(f._C_typedata, "%s%s" % (f.name, o.shape))
         else:
             assert False
 
@@ -738,6 +743,7 @@ class FindSymbols(Visitor):
     def visit_Expression(self, o):
         return self.Retval([f for f in self.rule(o)])
 
+    visit_Definition = visit_Expression
     visit_PointerCast = visit_Expression
     visit_Dereference = visit_Expression
     visit_Pragma = visit_Expression

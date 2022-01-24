@@ -120,9 +120,9 @@ class DataManager(object):
         Allocate an Array of Objects in the low latency memory.
         """
         shape = "".join("[%s]" % ccode(i) for i in obj.symbolic_shape)
-        decl = "%s%s" % (obj.name, shape)
+        decl = Definition(obj, shape=shape)
 
-        storage.update(obj, site, allocs=c.Value(obj._C_typedata, decl))
+        storage.update(obj, site, allocs=decl)
 
     def _alloc_pointed_array_on_high_bw_mem(self, site, obj, storage):
         """
@@ -300,8 +300,8 @@ class DataManager(object):
         # (i) Dereference of PointerArray, e.g., `float (*r0)[.] = (float(*)[.]) pr0[.]`
         # (ii) Linearized mallocs, e.g., `float * r0 = NULL; *malloc(&(r0), ...)
         defines = set(FindSymbols('defines').visit(iet))
-        defines = {i._C_name for i in defines}
-        needs_cast = lambda f: f.name not in defines and f._C_name != f.name
+        needs_cast = lambda f: f.indexed not in defines
+        from IPython import embed; embed()
 
         # Create Function -> n-dimensional array casts
         # E.g. `float (*u)[.] = (float (*)[.]) u_vec->data`
