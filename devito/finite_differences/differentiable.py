@@ -575,6 +575,7 @@ def diff2sympy(expr):
             ax, af = _diff2sympy(a)
             args.append(ax)
             flag |= af
+
         try:
             return obj.__sympy_class__(*args, evaluate=False), True
         except AttributeError:
